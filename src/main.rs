@@ -66,6 +66,10 @@ fn main() -> Result<()> {
             if name == ".git" {
                 return true;
             }
+            // Don't filter based on name if it's ".", "..", or starts with "./" or "../" (root directory)
+            if name == "." || name == ".." || name.starts_with("./") || name.starts_with("../") {
+                return true;
+            }
             !name.starts_with('.')
         })
         .filter_map(|e| e.ok())
