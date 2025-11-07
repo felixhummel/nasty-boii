@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 description = "Finds git repos that have changes that are not yet pushed"
-repository = "https://github.com/felix/nasty-boii"
+repository = "https://github.com/felixhummel/nasty-boii"
 keywords = ["git", "repository", "cli", "tool"]
 categories = ["command-line-utilities", "development-tools"]
 
