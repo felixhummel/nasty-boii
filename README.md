@@ -23,5 +23,12 @@ nasty-boii --threads 8
 # Development
 Run nasty-boii against test data
 ```
-cargo run -- -l debug tests/data/
+$ cargo run -- -l debug tests/data/
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.02s
+     Running `target/debug/nasty-boii -l debug tests/data/`
+2025-11-07T19:49:20.222952Z  INFO Starting repository scan search_path=tests/data/ threads=None
+2025-11-07T19:49:20.223799Z  INFO Found repository repo_path=tests/data/clean-repo
+2025-11-07T19:49:20.223802Z  INFO Found repository repo_path=tests/data/nasty-repo
+2025-11-07T19:49:20.240084Z DEBUG Repository is clean repo_path=tests/data/clean-repo
+tests/data/nasty-repo
 ```
