@@ -31,3 +31,8 @@ pedantic = { level = "deny", priority = -1 }
 cargo = { level = "deny", priority = -1 }
 # Allow multiple crate versions (dependency issue out of our control)
 multiple-crate-versions = "allow"
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"
+lto = "thin"
