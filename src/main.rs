@@ -22,14 +22,19 @@ struct Args {
     /// Log level (off, error, warn, info, debug, trace)
     #[arg(short = 'l', long, default_value = "warn")]
     log_level: String,
+
+    /// Enable verbose output (equivalent to --log-level info)
+    #[arg(short, long)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
     // Set up tracing
+    let log_level = if args.verbose { "info" } else { &args.log_level };
     let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(&args.log_level));
+        .unwrap_or_else(|_| EnvFilter::new(log_level));
 
     fmt()
         .with_env_filter(env_filter)
@@ -53,8 +58,6 @@ fn main() -> Result<()> {
 
     // Find all git repositories
     let git_repos = find_git_repos(&args.path)?;
-
-    info!(repo_count = git_repos.len(), "Found git repositories");
 
     for repo in &git_repos {
         debug!(repo_path = %repo.display(), "Found repository");
@@ -90,12 +93,6 @@ fn main() -> Result<()> {
             }
         })
         .collect();
-
-    info!(
-        nasty_count = nasty_repos.len(),
-        total_count = git_repos.len(),
-        "Scan complete"
-    );
 
     // Print results
     for repo in nasty_repos {
