@@ -27,9 +27,7 @@ pub fn check_repo_status(repo_path: &Path) -> Result<RepoStatus> {
         return Ok(RepoStatus::Clean);
     }
 
-    let branch_name = head
-        .shorthand()
-        .context("Failed to get branch name")?;
+    let branch_name = head.shorthand().context("Failed to get branch name")?;
 
     let branch = repo
         .find_branch(branch_name, BranchType::Local)

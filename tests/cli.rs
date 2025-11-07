@@ -1,14 +1,15 @@
 mod fixtures;
 
 use assert_cmd::cargo::cargo_bin_cmd;
-use predicates::prelude::*;
 use fixtures::TestRepos;
+use predicates::prelude::*;
 
 #[test]
 fn test_finds_nasty_repo() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg(repos.path())
+    cargo_bin_cmd!()
+        .arg(repos.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("nasty-repo"));
@@ -18,7 +19,8 @@ fn test_finds_nasty_repo() {
 fn test_does_not_list_clean_repo() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg(repos.path())
+    cargo_bin_cmd!()
+        .arg(repos.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("clean-repo").not());
@@ -28,7 +30,8 @@ fn test_does_not_list_clean_repo() {
 fn test_finds_no_upstream_repo() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg(repos.path())
+    cargo_bin_cmd!()
+        .arg(repos.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("no-upstream-repo"));
@@ -42,7 +45,8 @@ fn test_missing_head_flag() {
     // This test verifies that the flag doesn't crash and runs successfully.
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg("--missing-head")
+    cargo_bin_cmd!()
+        .arg("--missing-head")
         .arg(repos.path())
         .assert()
         .success();
@@ -55,7 +59,8 @@ fn test_missing_head_flag() {
 fn test_missing_head_flag_does_not_show_nasty_repo() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg("--missing-head")
+    cargo_bin_cmd!()
+        .arg("--missing-head")
         .arg(repos.path())
         .assert()
         .success()
@@ -68,7 +73,8 @@ fn test_default_mode_does_not_show_missing_head() {
 
     // In default mode, missing-head repos should not appear in stdout
     // (they appear in warnings instead)
-    cargo_bin_cmd!().arg(repos.path())
+    cargo_bin_cmd!()
+        .arg(repos.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("missing-head-repo").not());
@@ -79,7 +85,8 @@ fn test_behind_repo_not_listed() {
     let repos = TestRepos::new();
 
     // Repos that are behind (but not ahead) should not be listed
-    cargo_bin_cmd!().arg(repos.path())
+    cargo_bin_cmd!()
+        .arg(repos.path())
         .assert()
         .success()
         .stdout(predicate::str::contains("behind-repo").not());
@@ -89,7 +96,8 @@ fn test_behind_repo_not_listed() {
 fn test_verbose_flag() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg("--verbose")
+    cargo_bin_cmd!()
+        .arg("--verbose")
         .arg(repos.path())
         .assert()
         .success()
@@ -100,7 +108,8 @@ fn test_verbose_flag() {
 fn test_log_level_debug() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg("--log-level")
+    cargo_bin_cmd!()
+        .arg("--log-level")
         .arg("debug")
         .arg(repos.path())
         .assert()
@@ -114,7 +123,8 @@ fn test_current_directory_default() {
     // We run it in the fixtures directory
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().current_dir(repos.path())
+    cargo_bin_cmd!()
+        .current_dir(repos.path())
         .assert()
         .success();
 }
@@ -123,7 +133,8 @@ fn test_current_directory_default() {
 fn test_threads_flag() {
     let repos = TestRepos::new();
 
-    cargo_bin_cmd!().arg("--threads")
+    cargo_bin_cmd!()
+        .arg("--threads")
         .arg("2")
         .arg("--verbose")
         .arg(repos.path())
@@ -134,7 +145,8 @@ fn test_threads_flag() {
 
 #[test]
 fn test_nonexistent_directory() {
-    cargo_bin_cmd!().arg("/nonexistent/path/that/does/not/exist")
+    cargo_bin_cmd!()
+        .arg("/nonexistent/path/that/does/not/exist")
         .assert()
         .success(); // WalkDir just returns no results for nonexistent paths
 }
@@ -143,7 +155,8 @@ fn test_nonexistent_directory() {
 fn test_empty_directory() {
     let temp_dir = tempfile::tempdir().unwrap();
 
-    cargo_bin_cmd!().arg(temp_dir.path())
+    cargo_bin_cmd!()
+        .arg(temp_dir.path())
         .assert()
         .success()
         .stdout(predicate::str::is_empty());

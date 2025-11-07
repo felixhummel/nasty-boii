@@ -41,14 +41,15 @@ fn main() -> Result<()> {
     } else {
         &args.log_level
     };
-    let log_level = if args.verbose { "info" } else { default_log_level };
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new(log_level));
+    let log_level = if args.verbose {
+        "info"
+    } else {
+        default_log_level
+    };
+    let env_filter =
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(log_level));
 
-    fmt()
-        .with_env_filter(env_filter)
-        .with_target(false)
-        .init();
+    fmt().with_env_filter(env_filter).with_target(false).init();
 
     info!(
         search_path = %args.path.display(),
@@ -89,39 +90,39 @@ fn main() -> Result<()> {
         .filter_map(|e| e.path().parent().map(|p| p.to_path_buf()))
         .par_bridge()
         .for_each(|repo_path| {
-        info!(repo_path = %repo_path.display(), "Found repository");
+            info!(repo_path = %repo_path.display(), "Found repository");
 
-        match check_repo_status(&repo_path) {
-            Ok(RepoStatus::HasUnpushed) => {
-                if !missing_head_mode {
-                    println!("{}", repo_path.display());
+            match check_repo_status(&repo_path) {
+                Ok(RepoStatus::HasUnpushed) => {
+                    if !missing_head_mode {
+                        println!("{}", repo_path.display());
+                    }
                 }
-            }
-            Ok(RepoStatus::MissingHead) => {
-                if missing_head_mode {
-                    println!("{}", repo_path.display());
-                } else {
+                Ok(RepoStatus::MissingHead) => {
+                    if missing_head_mode {
+                        println!("{}", repo_path.display());
+                    } else {
+                        warn!(
+                            repo_path = %repo_path.display(),
+                            "Repository has no HEAD"
+                        );
+                    }
+                }
+                Ok(RepoStatus::Clean) => {
+                    debug!(
+                        repo_path = %repo_path.display(),
+                        "Repository is clean"
+                    );
+                }
+                Err(e) => {
                     warn!(
                         repo_path = %repo_path.display(),
-                        "Repository has no HEAD"
+                        error = %e,
+                        "Failed to check repository"
                     );
                 }
             }
-            Ok(RepoStatus::Clean) => {
-                debug!(
-                    repo_path = %repo_path.display(),
-                    "Repository is clean"
-                );
-            }
-            Err(e) => {
-                warn!(
-                    repo_path = %repo_path.display(),
-                    error = %e,
-                    "Failed to check repository"
-                );
-            }
-        }
-    });
+        });
 
     Ok(())
 }
