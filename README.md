@@ -15,3 +15,10 @@ The number of threads default to number of cores.
 ```
 nasty-boii --threads 8
 ```
+
+
+# Development
+Run nasty-boii against test data
+```
+cargo run -- -l debug tests/data/
+```

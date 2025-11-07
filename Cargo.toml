@@ -10,3 +10,5 @@ walkdir = "2.5"
 rayon = "1.10"
 num_cpus = "1.16"
 anyhow = "1.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
