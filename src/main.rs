@@ -1,18 +1,11 @@
 use anyhow::{Context, Result};
 use clap::Parser;
-use git2::{BranchType, Repository};
+use nasty_boii::{check_repo_status, RepoStatus};
 use rayon::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use tracing::{debug, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 use walkdir::WalkDir;
-
-#[derive(Debug, PartialEq)]
-enum RepoStatus {
-    Clean,
-    HasUnpushed,
-    MissingHead,
-}
 
 #[derive(Parser, Debug)]
 #[command(name = "nasty-boii")]
@@ -77,15 +70,17 @@ fn main() -> Result<()> {
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| {
+            // Always allow the root directory (depth 0)
+            if e.depth() == 0 {
+                return true;
+            }
+
             // Skip hidden directories except .git
             let name = e.file_name().to_string_lossy();
             if name == ".git" {
                 return true;
             }
-            // Don't filter based on name if it's ".", "..", or starts with "./" or "../" (root directory)
-            if name == "." || name == ".." || name.starts_with("./") || name.starts_with("../") {
-                return true;
-            }
+
             !name.starts_with('.')
         })
         .filter_map(|e| e.ok())
@@ -131,68 +126,4 @@ fn main() -> Result<()> {
     });
 
     Ok(())
-}
-
-fn check_repo_status(repo_path: &Path) -> Result<RepoStatus> {
-    let repo = Repository::open(repo_path)
-        .context(format!("Failed to open repository at {:?}", repo_path))?;
-
-    // Get the current branch
-    let head = match repo.head() {
-        Ok(head) => head,
-        Err(_) => {
-            // Failed to get HEAD (unborn or missing)
-            return Ok(RepoStatus::MissingHead);
-        }
-    };
-
-    if !head.is_branch() {
-        // Not on a branch (detached HEAD), skip
-        return Ok(RepoStatus::Clean);
-    }
-
-    let branch_name = head
-        .shorthand()
-        .context("Failed to get branch name")?;
-
-    let branch = repo
-        .find_branch(branch_name, BranchType::Local)
-        .context("Failed to find local branch")?;
-
-    // Get the upstream branch
-    let upstream = match branch.upstream() {
-        Ok(upstream) => upstream,
-        Err(_) => {
-            // No upstream branch configured, consider it as having unpushed changes
-            // if there are any commits
-            return Ok(RepoStatus::HasUnpushed);
-        }
-    };
-
-    // Get the local and remote commit OIDs
-    let local_oid = branch
-        .get()
-        .target()
-        .context("Failed to get local branch target")?;
-
-    let remote_oid = upstream
-        .get()
-        .target()
-        .context("Failed to get remote branch target")?;
-
-    // Check if the branches point to different commits
-    if local_oid == remote_oid {
-        return Ok(RepoStatus::Clean);
-    }
-
-    // Check if local is ahead of remote
-    let (ahead, _behind) = repo
-        .graph_ahead_behind(local_oid, remote_oid)
-        .context("Failed to calculate ahead/behind")?;
-
-    if ahead > 0 {
-        Ok(RepoStatus::HasUnpushed)
-    } else {
-        Ok(RepoStatus::Clean)
-    }
 }
