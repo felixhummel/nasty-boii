@@ -7,6 +7,13 @@ use tracing::{debug, info, warn};
 use tracing_subscriber::{fmt, EnvFilter};
 use walkdir::WalkDir;
 
+#[derive(Debug, PartialEq)]
+enum RepoStatus {
+    Clean,
+    HasUnpushed,
+    MissingHead,
+}
+
 #[derive(Parser, Debug)]
 #[command(name = "nasty-boii")]
 #[command(about = "Finds git repos that have changes that are not yet pushed", long_about = None)]
@@ -26,13 +33,22 @@ struct Args {
     /// Enable verbose output (equivalent to --log-level info)
     #[arg(short, long)]
     verbose: bool,
+
+    /// List repos with missing HEAD (default log level becomes error)
+    #[arg(long)]
+    missing_head: bool,
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
     // Set up tracing
-    let log_level = if args.verbose { "info" } else { &args.log_level };
+    let default_log_level = if args.missing_head {
+        "error"
+    } else {
+        &args.log_level
+    };
+    let log_level = if args.verbose { "info" } else { default_log_level };
     let env_filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| EnvFilter::new(log_level));
 
@@ -78,14 +94,27 @@ fn main() -> Result<()> {
         .collect();
 
     // Process repositories in parallel
+    let missing_head_mode = args.missing_head;
     all_entries.par_iter().for_each(|repo_path| {
         info!(repo_path = %repo_path.display(), "Found repository");
 
-        match has_unpushed_changes(repo_path) {
-            Ok(true) => {
-                println!("{}", repo_path.display());
+        match check_repo_status(repo_path) {
+            Ok(RepoStatus::HasUnpushed) => {
+                if !missing_head_mode {
+                    println!("{}", repo_path.display());
+                }
             }
-            Ok(false) => {
+            Ok(RepoStatus::MissingHead) => {
+                if missing_head_mode {
+                    println!("{}", repo_path.display());
+                } else {
+                    warn!(
+                        repo_path = %repo_path.display(),
+                        "Repository has no HEAD"
+                    );
+                }
+            }
+            Ok(RepoStatus::Clean) => {
                 debug!(
                     repo_path = %repo_path.display(),
                     "Repository is clean"
@@ -104,16 +133,22 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn has_unpushed_changes(repo_path: &Path) -> Result<bool> {
+fn check_repo_status(repo_path: &Path) -> Result<RepoStatus> {
     let repo = Repository::open(repo_path)
         .context(format!("Failed to open repository at {:?}", repo_path))?;
 
     // Get the current branch
-    let head = repo.head().context("Failed to get HEAD")?;
+    let head = match repo.head() {
+        Ok(head) => head,
+        Err(_) => {
+            // Failed to get HEAD (unborn or missing)
+            return Ok(RepoStatus::MissingHead);
+        }
+    };
 
     if !head.is_branch() {
         // Not on a branch (detached HEAD), skip
-        return Ok(false);
+        return Ok(RepoStatus::Clean);
     }
 
     let branch_name = head
@@ -130,7 +165,7 @@ fn has_unpushed_changes(repo_path: &Path) -> Result<bool> {
         Err(_) => {
             // No upstream branch configured, consider it as having unpushed changes
             // if there are any commits
-            return Ok(true);
+            return Ok(RepoStatus::HasUnpushed);
         }
     };
 
@@ -147,7 +182,7 @@ fn has_unpushed_changes(repo_path: &Path) -> Result<bool> {
 
     // Check if the branches point to different commits
     if local_oid == remote_oid {
-        return Ok(false);
+        return Ok(RepoStatus::Clean);
     }
 
     // Check if local is ahead of remote
@@ -155,5 +190,9 @@ fn has_unpushed_changes(repo_path: &Path) -> Result<bool> {
         .graph_ahead_behind(local_oid, remote_oid)
         .context("Failed to calculate ahead/behind")?;
 
-    Ok(ahead > 0)
+    if ahead > 0 {
+        Ok(RepoStatus::HasUnpushed)
+    } else {
+        Ok(RepoStatus::Clean)
+    }
 }
