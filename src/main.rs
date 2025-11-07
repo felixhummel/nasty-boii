@@ -60,7 +60,7 @@ fn main() -> Result<()> {
     let git_repos = find_git_repos(&args.path)?;
 
     for repo in &git_repos {
-        debug!(repo_path = %repo.display(), "Found repository");
+        info!(repo_path = %repo.display(), "Found repository");
     }
 
     // Check each repository in parallel for unpushed changes
@@ -68,13 +68,7 @@ fn main() -> Result<()> {
         .par_iter()
         .filter_map(|repo_path| {
             match has_unpushed_changes(repo_path) {
-                Ok(true) => {
-                    info!(
-                        repo_path = %repo_path.display(),
-                        "Repository has unpushed changes"
-                    );
-                    Some(repo_path.clone())
-                }
+                Ok(true) => Some(repo_path.clone()),
                 Ok(false) => {
                     debug!(
                         repo_path = %repo_path.display(),
