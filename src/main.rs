@@ -66,7 +66,8 @@ fn main() -> Result<()> {
     }
 
     // Find git repositories and check them in parallel
-    let all_entries: Vec<_> = WalkDir::new(&args.path)
+    let missing_head_mode = args.missing_head;
+    WalkDir::new(&args.path)
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| {
@@ -86,14 +87,11 @@ fn main() -> Result<()> {
         .filter_map(|e| e.ok())
         .filter(|e| e.file_type().is_dir() && e.file_name() == ".git")
         .filter_map(|e| e.path().parent().map(|p| p.to_path_buf()))
-        .collect();
-
-    // Process repositories in parallel
-    let missing_head_mode = args.missing_head;
-    all_entries.par_iter().for_each(|repo_path| {
+        .par_bridge()
+        .for_each(|repo_path| {
         info!(repo_path = %repo_path.display(), "Found repository");
 
-        match check_repo_status(repo_path) {
+        match check_repo_status(&repo_path) {
             Ok(RepoStatus::HasUnpushed) => {
                 if !missing_head_mode {
                     println!("{}", repo_path.display());
