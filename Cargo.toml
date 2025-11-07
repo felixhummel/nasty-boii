@@ -2,6 +2,11 @@
 name = "nasty-boii"
 version = "0.1.0"
 edition = "2021"
+license = "MIT"
+description = "Finds git repos that have changes that are not yet pushed"
+repository = "https://github.com/felix/nasty-boii"
+keywords = ["git", "repository", "cli", "tool"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -17,3 +22,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 assert_cmd = "2.0"
 predicates = "3.0"
 tempfile = "3.8"
+
+[lints.clippy]
+# Treat all clippy warnings as errors
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+# Cargo is already checking this
+cargo = { level = "deny", priority = -1 }
+# Allow multiple crate versions (dependency issue out of our control)
+multiple-crate-versions = "allow"

@@ -85,9 +85,9 @@ fn main() -> Result<()> {
 
             !name.starts_with('.')
         })
-        .filter_map(|e| e.ok())
+        .filter_map(std::result::Result::ok)
         .filter(|e| e.file_type().is_dir() && e.file_name() == ".git")
-        .filter_map(|e| e.path().parent().map(|p| p.to_path_buf()))
+        .filter_map(|e| e.path().parent().map(std::path::Path::to_path_buf))
         .par_bridge()
         .for_each(|repo_path| {
             info!(repo_path = %repo_path.display(), "Found repository");

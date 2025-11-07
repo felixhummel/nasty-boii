@@ -9,17 +9,20 @@ pub enum RepoStatus {
     MissingHead,
 }
 
+/// Checks the status of a git repository.
+///
+/// # Errors
+/// Returns an error if the repository cannot be opened or if git operations fail.
 pub fn check_repo_status(repo_path: &Path) -> Result<RepoStatus> {
-    let repo = Repository::open(repo_path)
-        .context(format!("Failed to open repository at {:?}", repo_path))?;
+    let repo = Repository::open(repo_path).context(format!(
+        "Failed to open repository at {}",
+        repo_path.display()
+    ))?;
 
     // Get the current branch
-    let head = match repo.head() {
-        Ok(head) => head,
-        Err(_) => {
-            // Failed to get HEAD (unborn or missing)
-            return Ok(RepoStatus::MissingHead);
-        }
+    let Ok(head) = repo.head() else {
+        // Failed to get HEAD (unborn or missing)
+        return Ok(RepoStatus::MissingHead);
     };
 
     if !head.is_branch() {
@@ -34,13 +37,10 @@ pub fn check_repo_status(repo_path: &Path) -> Result<RepoStatus> {
         .context("Failed to find local branch")?;
 
     // Get the upstream branch
-    let upstream = match branch.upstream() {
-        Ok(upstream) => upstream,
-        Err(_) => {
-            // No upstream branch configured, consider it as having unpushed changes
-            // if there are any commits
-            return Ok(RepoStatus::HasUnpushed);
-        }
+    let Ok(upstream) = branch.upstream() else {
+        // No upstream branch configured, consider it as having unpushed changes
+        // if there are any commits
+        return Ok(RepoStatus::HasUnpushed);
     };
 
     // Get the local and remote commit OIDs
