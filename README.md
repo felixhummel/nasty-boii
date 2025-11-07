@@ -1,5 +1,8 @@
 Nasty-Boii finds git repos that have changes that are not yet pushed.
 
+WARNING: This is vibe-coded.
+
+
 # Usage
 By default, `nasty-boii` searches in the working directory.
 ```
