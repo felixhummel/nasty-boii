@@ -56,50 +56,8 @@ fn main() -> Result<()> {
         debug!(thread_count = threads, "Configured thread pool");
     }
 
-    // Find all git repositories
-    let git_repos = find_git_repos(&args.path)?;
-
-    for repo in &git_repos {
-        info!(repo_path = %repo.display(), "Found repository");
-    }
-
-    // Check each repository in parallel for unpushed changes
-    let nasty_repos: Vec<PathBuf> = git_repos
-        .par_iter()
-        .filter_map(|repo_path| {
-            match has_unpushed_changes(repo_path) {
-                Ok(true) => Some(repo_path.clone()),
-                Ok(false) => {
-                    debug!(
-                        repo_path = %repo_path.display(),
-                        "Repository is clean"
-                    );
-                    None
-                }
-                Err(e) => {
-                    warn!(
-                        repo_path = %repo_path.display(),
-                        error = %e,
-                        "Failed to check repository"
-                    );
-                    None
-                }
-            }
-        })
-        .collect();
-
-    // Print results
-    for repo in nasty_repos {
-        println!("{}", repo.display());
-    }
-
-    Ok(())
-}
-
-fn find_git_repos(root: &Path) -> Result<Vec<PathBuf>> {
-    let mut repos = Vec::new();
-
-    for entry in WalkDir::new(root)
+    // Find git repositories and check them in parallel
+    let all_entries: Vec<_> = WalkDir::new(&args.path)
         .follow_links(false)
         .into_iter()
         .filter_entry(|e| {
@@ -110,17 +68,36 @@ fn find_git_repos(root: &Path) -> Result<Vec<PathBuf>> {
             }
             !name.starts_with('.')
         })
-    {
-        let entry = entry.context("Failed to read directory entry")?;
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_dir() && e.file_name() == ".git")
+        .filter_map(|e| e.path().parent().map(|p| p.to_path_buf()))
+        .collect();
 
-        if entry.file_type().is_dir() && entry.file_name() == ".git" {
-            if let Some(parent) = entry.path().parent() {
-                repos.push(parent.to_path_buf());
+    // Process repositories in parallel
+    all_entries.par_iter().for_each(|repo_path| {
+        info!(repo_path = %repo_path.display(), "Found repository");
+
+        match has_unpushed_changes(repo_path) {
+            Ok(true) => {
+                println!("{}", repo_path.display());
+            }
+            Ok(false) => {
+                debug!(
+                    repo_path = %repo_path.display(),
+                    "Repository is clean"
+                );
+            }
+            Err(e) => {
+                warn!(
+                    repo_path = %repo_path.display(),
+                    error = %e,
+                    "Failed to check repository"
+                );
             }
         }
-    }
+    });
 
-    Ok(repos)
+    Ok(())
 }
 
 fn has_unpushed_changes(repo_path: &Path) -> Result<bool> {
