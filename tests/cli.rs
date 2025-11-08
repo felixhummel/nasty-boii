@@ -161,3 +161,92 @@ fn test_empty_directory() {
         .success()
         .stdout(predicate::str::is_empty());
 }
+
+#[test]
+fn test_exclude_from_file() {
+    let repos = TestRepos::new();
+
+    // Create an exclude file that excludes nasty-repo
+    let exclude_file = repos.path().join(".exclude");
+    std::fs::write(&exclude_file, "nasty-repo/\n").unwrap();
+
+    cargo_bin_cmd!()
+        .arg("--exclude-from")
+        .arg(&exclude_file)
+        .arg(repos.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("nasty-repo").not())
+        .stdout(predicate::str::contains("no-upstream-repo"));
+}
+
+#[test]
+fn test_exclude_from_wildcard() {
+    let repos = TestRepos::new();
+
+    // Create an exclude file with wildcard pattern
+    let exclude_file = repos.path().join(".exclude");
+    std::fs::write(&exclude_file, "*-repo/\n").unwrap();
+
+    cargo_bin_cmd!()
+        .arg("--exclude-from")
+        .arg(&exclude_file)
+        .arg(repos.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::is_empty());
+}
+
+#[test]
+fn test_exclude_from_with_comments() {
+    let repos = TestRepos::new();
+
+    // Create an exclude file with comments and patterns
+    let exclude_file = repos.path().join(".exclude");
+    std::fs::write(
+        &exclude_file,
+        "# This is a comment\nnasty-repo/\n# Another comment\nclean-repo/\n",
+    )
+    .unwrap();
+
+    cargo_bin_cmd!()
+        .arg("--exclude-from")
+        .arg(&exclude_file)
+        .arg(repos.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("nasty-repo").not())
+        .stdout(predicate::str::contains("clean-repo").not())
+        .stdout(predicate::str::contains("no-upstream-repo"));
+}
+
+#[test]
+fn test_exclude_from_negation() {
+    let repos = TestRepos::new();
+
+    // Create an exclude file with negation pattern
+    let exclude_file = repos.path().join(".exclude");
+    std::fs::write(&exclude_file, "*-repo/\n!nasty-repo/\n").unwrap();
+
+    cargo_bin_cmd!()
+        .arg("--exclude-from")
+        .arg(&exclude_file)
+        .arg(repos.path())
+        .assert()
+        .success()
+        .stdout(predicate::str::contains("nasty-repo"))
+        .stdout(predicate::str::contains("clean-repo").not())
+        .stdout(predicate::str::contains("no-upstream-repo").not());
+}
+
+#[test]
+fn test_exclude_from_nonexistent_file() {
+    let repos = TestRepos::new();
+
+    cargo_bin_cmd!()
+        .arg("--exclude-from")
+        .arg("/nonexistent/exclude/file")
+        .arg(repos.path())
+        .assert()
+        .failure();
+}

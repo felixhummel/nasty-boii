@@ -32,3 +32,8 @@ $ cargo run -- -l debug tests/data/
 2025-11-07T19:49:20.240084Z DEBUG Repository is clean repo_path=tests/data/clean-repo
 tests/data/nasty-repo
 ```
+
+
+# Notes
+There is no guaranteed sort order, because nasty-boii processes repos as they
+are discovered for performance reasons.
